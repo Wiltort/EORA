@@ -1,3 +1,4 @@
+from functools import lru_cache
 from fastapi import APIRouter, HTTPException
 from .schemas import AnswerResponse, QuestionRequest
 from .utils import scrape_eora_content, generate_context
@@ -8,11 +9,16 @@ router = APIRouter(prefix="/api/v1")
 ai_client = OpenAI(api_key=settings.API_KEY, base_url=settings.API_BASE_URL)
 
 
+@lru_cache(maxsize=1)
+def get_cached_context():
+    content_dict = scrape_eora_content()
+    return generate_context(content_dict)
+
+
 @router.post("/ask", response_model=AnswerResponse)
 async def ask_question(request: QuestionRequest):
     """Endpoint to ask questions about EORA projects"""
-    content_dict = scrape_eora_content()
-    context = generate_context(content_dict)
+    context = get_cached_context()
 
     messages = [
         {
